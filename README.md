@@ -287,6 +287,8 @@ The theme stack was reverse engineered down to:
 This work allows local themes to be treated as a normal compatibility problem
 instead of depending entirely on Xiaomi's online Theme Store.
 
+# Edited: Accidently found an unwanted bug: cannot click "Wallpaper & Personalization" in Settings, will fix it later.
+
 ---
 
 # Forensics Methodology
