@@ -78,6 +78,9 @@ MediaTek-specific services that do not exist on the A03.
 
 The project therefore uses a **first-failure / minimal-patch methodology**:
 
+# Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.
+
+
 ```
 Boot
   ↓
@@ -287,7 +290,6 @@ The theme stack was reverse engineered down to:
 This work allows local themes to be treated as a normal compatibility problem
 instead of depending entirely on Xiaomi's online Theme Store.
 
-# Edited: Accidently found an unwanted bug: cannot click "Wallpaper & Personalization" in Settings, will fix it later.
 
 ---
 
