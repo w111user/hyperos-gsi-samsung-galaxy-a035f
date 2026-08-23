@@ -27,3 +27,4 @@ hardware initialization layer.
 
 > **Note:** T2/T3 boot artifacts belong to the separate HyperOS 2 / Android 15
 > investigation and are intentionally excluded from the HyperOS 1 lineage.
+> If you want to flash boot files to your device after flash the system files, you should flash "T1.2-P" version
