@@ -78,7 +78,7 @@ MediaTek-specific services that do not exist on the A03.
 
 The project therefore uses a **first-failure / minimal-patch methodology**:
 
-# Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.
+# ~~Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.~~ Fixed it on ver T1.11! 
 
 
 ```
@@ -290,7 +290,7 @@ The theme stack was reverse engineered down to:
 This work allows local themes to be treated as a normal compatibility problem
 instead of depending entirely on Xiaomi's online Theme Store.
 
-
+But why I still upload and recommended T11.1? Cuz the theme patching (T1.8-T1.10) have a bug that cannot open theme (and Wallpaper & Personalization) apps through setting and else. T1.11 fixed it correctly.
 ---
 
 # Forensics Methodology
