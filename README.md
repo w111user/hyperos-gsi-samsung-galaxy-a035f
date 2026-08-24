@@ -290,8 +290,263 @@ The theme stack was reverse engineered down to:
 This work allows local themes to be treated as a normal compatibility problem
 instead of depending entirely on Xiaomi's online Theme Store.
 
-But why I still upload and recommended T1.11? Cuz the theme patching (T1.8-T1.10) have a bug that cannot open theme (and Wallpaper & Personalization) apps through setting and else. T1.11 fixed it correctly.
+But why I still upload and recommended T1.11 before T1.12->later release? Cuz the theme patching (T1.8-T1.10) have a bug that cannot open theme (and Wallpaper & Personalization) apps through setting and else. T1.11 fixed it correctly.
 ---
+
+# T1.12 — Generic AOSP RIL Compatibility
+
+T1.12 was the first successful attempt to make HyperOS use the standard Android
+radio stack provided by the Samsung/Unisoc platform instead of the missing
+MediaTek-specific radio services.
+
+### Original failure
+
+```text
+MtkTeleService
+    ↓
+MtkRIL / MtkRadioExProxy
+    ↓
+vendor.mediatek.hardware.radio
+    ↓
+NoSuchElementException
+```
+
+The A03 does not provide the MediaTek radio service expected by HyperOS.
+
+### Patch
+
+The first live solution made:
+
+```text
+com.android.internal.telephony.TelephonyComponentFactory
+    └── injectTheComponentFactory(XmlResourceParser)
+            ↓
+        return-void
+```
+
+This disabled HyperOS' MTK component-factory injection and allowed the existing
+generic AOSP RIL in `telephony-common.jar` to initialize.
+
+The generic RIL successfully connected to:
+
+```text
+android.hardware.radio@1.5::IRadio/slot1
+```
+
+### Result
+
+Verified on the live device:
+
+- PhoneFactory initialization
+- Generic RIL initialization
+- `setResponseFunctions`
+- SIM detection
+- LTE registration
+- signal reporting
+- Samsung/Unisoc RIL communication
+
+The original `MtkRadioExProxy` / MediaTek HAL failure path was eliminated.
+
+### Limitation
+
+Disabling the whole component-factory injection introduced a second problem:
+HyperOS-specific code expected `MtkUiccController`, while the framework now
+created the generic AOSP `UiccController`.
+
+This became the basis for T1.13.
+
+---
+
+# T1.13 — Hybrid MTK Components + Generic AOSP RIL
+
+T1.13 refined T1.12 instead of replacing the whole telephony architecture.
+
+### Problem
+
+With T1.12, HyperOS components such as:
+
+```text
+MtkPhoneInterfaceManagerEx
+MtkTelephonyManagerEx
+TelecomAccountRegistry
+```
+
+could receive the generic:
+
+```text
+UiccController
+```
+
+instead of the expected:
+
+```text
+MtkUiccController
+```
+
+This caused a runtime:
+
+```text
+ClassCastException
+UiccController cannot be cast to MtkUiccController
+```
+
+which made `com.android.phone` restart and caused
+**Settings → Mobile Networks** to crash.
+
+### Architecture
+
+T1.13 restores the MediaTek component factory, but changes only the RIL
+creation path:
+
+```text
+MtkTelephonyComponentFactory
+    ├── MtkUiccController
+    ├── MTK SIM / phonebook components
+    ├── other HyperOS-required MTK components
+    │
+    └── makeRil()
+            ↓
+        Generic AOSP RIL
+            ↓
+        android.hardware.radio@1.5
+            ↓
+        Samsung / Unisoc rild
+```
+
+The important design change is:
+
+> Preserve MTK framework components that HyperOS still depends on, while
+> replacing only the hardware-incompatible MTK RIL client.
+
+### Result
+
+T1.13 restored:
+
+- stable `com.android.phone`
+- `MtkUiccController`
+- SIM-related framework functionality
+- Settings → Mobile Networks
+- LTE registration
+- generic AOSP RIL operation
+
+This became the hybrid telephony architecture used for the next milestone.
+
+---
+
+# T1.14 — SIM Power-State Compatibility / Voice Call Fix
+
+After T1.13, the telephony framework and Mobile Networks UI were stable, but
+normal outgoing calls still failed.
+
+The Dialer displayed:
+
+```text
+Mobile network not available
+```
+
+### Root Cause
+
+The call was failing **before it reached the RIL**.
+
+HyperOS `TelecomAccountRegistry` relies on:
+
+```text
+MtkTelephonyManagerEx.getSimOnOffState()
+```
+
+and expects the MTK SIM power-state value:
+
+```text
+SIM_POWER_STATE_SIM_ON = 0x0B
+```
+
+The compatibility path was returning:
+
+```text
+0x01
+```
+
+instead.
+
+Because the expected value did not match, the real SIM PhoneAccount was not
+registered correctly. The call therefore fell back to:
+
+```text
+subId = -1
+phone_id = -1
+Phone = null
+```
+
+and failed before `RIL.dial()`.
+
+### Patch
+
+Only the return constant of:
+
+```text
+com.mediatek.telephony.MtkTelephonyManagerEx
+    └── getSimOnOffState(int)
+```
+
+was changed:
+
+```smali
+- const/4 v0, 0x1
++ const/16 v0, 0xb
+  return v0
+```
+
+No change was made to:
+
+- Generic RIL
+- Radio HAL
+- vendor RIL
+- modem firmware
+- kernel
+- telephony APK signatures
+
+### Result
+
+The SIM PhoneAccount could be registered using the value expected by the
+HyperOS telephony layer, allowing the normal call path to continue through:
+
+```text
+PhoneAccount
+    ↓
+GsmCdmaPhone
+    ↓
+GsmCdmaCallTracker
+    ↓
+RIL.dial()
+    ↓
+android.hardware.radio@1.5
+```
+
+T1.14 therefore completed the transition from:
+
+```text
+HyperOS MTK RIL
+```
+
+to a hybrid:
+
+```text
+HyperOS MTK framework components
+            +
+Generic AOSP RIL
+            +
+Samsung / Unisoc radio HAL
+```
+
+---
+
+# Telephony Milestone Summary
+
+| Milestone | Main change | Main result |
+|---|---|---|
+| **T1.12** | Disabled global MTK component-factory injection | Generic AOSP RIL reached `IRadio@1.5` |
+| **T1.13** | Restored MTK factory, changed only RIL creation | MTK UICC compatibility + Generic AOSP RIL |
+| **T1.14** | Fixed `SIM_POWER_STATE_SIM_ON` compatibility value | Normal SIM PhoneAccount / call path restored |
 
 # Forensics Methodology
 
@@ -361,8 +616,11 @@ T1.5  → HyperOS 1 boot / framework compatibility
 T1.6  → Camera compatibility
 T1.7  → Xiaomi Account compatibility
 T1.8  → ThemeManager stability
-T1.9  → Local MTZ theme investigation
-T1.10 → Theme-packaged system image
+T1.10  → Local MTZ theme investigationTheme-packaged system image + Local MTZ theme investigation
+T1.11 → Theme UID / stability baseline
+T1.12 → Generic AOSP RIL compatibility
+T1.13 → Hybrid MTK components + Generic AOSP RIL
+T1.14 → SIM power-state / voice call compatibility
 ```
 
 Each milestone is intended to be derived from the previous verified baseline
@@ -511,4 +769,3 @@ Always keep a known-good stock firmware and recovery path available.
 > Then make it work.
 >
 > Then find out why it didn't work in the first place.
-
