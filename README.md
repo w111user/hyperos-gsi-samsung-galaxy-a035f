@@ -201,7 +201,7 @@ Additional compatibility work included:
 
 The objective was to preserve the normal Xiaomi authentication flow instead
 of faking successful authentication.
-# Hold up, after this ver, all later ver make the mi login cannot be launch, will fix it later.
+# Hold up, after this ver, all later ver make the mi login cannot be launch because the signature after patch have problems, will fix it later.
 ---
 
 # T1.8 — ThemeManager Stability
