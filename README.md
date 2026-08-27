@@ -201,7 +201,7 @@ Additional compatibility work included:
 
 The objective was to preserve the normal Xiaomi authentication flow instead
 of faking successful authentication.
-# Hold up, after this ver, all later ver make the mi login cannot be launch because the signature after patch have problems, will fix it later.
+# ~~Hold up, after this ver, all later ver make the mi login cannot be launch because the signature after patch have problems, will fix it later.~~ Fixed on T1.14.1!
 ---
 
 # T1.8 — ThemeManager Stability
@@ -539,6 +539,204 @@ Samsung / Unisoc radio HAL
 ```
 
 ---
+
+# T1.14.1 — Xiaomi Account Full Integration
+
+T1.14.1 is the Xiaomi Account integration release built directly on the
+verified **T1.14** telephony baseline.
+
+The release keeps the T1.14 hybrid telephony architecture intact while adding
+the cumulative Xiaomi Account compatibility fixes and the scoped
+AccountManager trust hook required for HyperOS Settings integration.
+
+### Base
+
+- Base image: `T1.14_SYSTEM_CAMERA_MIACCOUNT_THEME_RIL_VOICE_FIXED.img`
+- T1.14 remains the only system-image baseline for this release.
+- No T1.14 telephony components are replaced or downgraded.
+
+### Preserved Telephony
+
+The following T1.14 components were verified byte-for-byte identical after the
+merge:
+
+- `system/framework/telephony-common.jar`
+- `system_ext/framework/mediatek-telephony-base.jar`
+- `system_ext/framework/mediatek-telephony-common.jar`
+- Generic AOSP RIL routing
+- Samsung / Unisoc Radio HAL integration
+- T1.14 SIM power-state compatibility
+- Voice-call / SMS compatibility
+
+The Xiaomi Account integration does not modify the T1.14 telephony stack.
+
+### Xiaomi Account Compatibility
+
+T1.14.1 includes the cumulative Xiaomi Account compatibility work required to
+run the original Xiaomi Account application on the Galaxy A03.
+
+#### CloudID fallback
+
+The Xiaomi Cloud provider `com.xiaomi.cloud.cloudidprovider` is unavailable
+on the GSI.
+
+The affected `ContentResolver.call()` path is caught and the original
+Android-ID fallback is used instead.
+
+#### `Intent.getMiuiFlags()` compatibility
+
+Xiaomi Account expects the MIUI-specific `Intent.getMiuiFlags()` API, which is
+not available in the generic AOSP framework used by the A03.
+
+The missing API is handled through a local compatibility path while
+preserving the normal Intent flow.
+
+#### `IS_PRIVATE_WATER_MARKER` compatibility
+
+The Xiaomi Account code references:
+
+`miui.os.Build.IS_PRIVATE_WATER_MARKER`
+
+This field is unavailable on the target framework.
+
+The compatibility path uses the verified default `false` behavior.
+
+#### MIUI permission declaration compatibility
+
+The MIUI permission declaration activity may return `resultCode = -2` on the
+GSI.
+
+The Xiaomi Account flow now follows the existing continuation path instead
+of aborting with `IllegalStateException("no permission")`.
+
+#### Subscriber ID / SIM compatibility
+
+Restricted subscriber identifier access can raise `SecurityException` on the
+A03.
+
+The Xiaomi Account SIM helper now follows its existing null / optional path
+when the identifier cannot be accessed.
+
+#### Xiaomi MTD service deadlock
+
+The proprietary:
+
+`vendor.xiaomi.hardware.mtdservice`
+
+is not available on the A03.
+
+The original Xiaomi Account implementation could wait indefinitely for this
+service, leaving the login screen stuck at:
+
+`Checking password...`
+
+The compatibility path returns immediately when the service is unavailable,
+allowing the normal Xiaomi Passport HTTPS authentication flow to proceed.
+
+#### Find Device fallback
+
+The target GSI does not provide the Xiaomi Find Device service:
+
+`com.xiaomi.finddevice/.v2.FindDeviceStatusManagerService`
+
+The Xiaomi Account Find Device query now treats the missing service as
+unavailable instead of terminating the Account Settings activity.
+
+The resulting UI can display Find Device as unavailable / Off while keeping
+the Account Settings activity stable.
+
+### AccountManager Integration
+
+T1.14.1 also includes a scoped framework compatibility hook in:
+
+`miui.content.pm.ExtraPackageManager.isTrustedAccountSignature()`
+
+The additional trust path is limited to:
+
+```text
+accountType = com.xiaomi
+callingUid  = 1000
+serviceUid  = com.xiaomi.account
+```
+
+All unrelated account types and callers continue through the original
+signature verification logic.
+
+This allows HyperOS Settings to read Xiaomi Account user data through
+`AccountManager` without globally disabling Android signature checks.
+
+### Package Integration
+
+The patched Xiaomi Account package is installed as a privileged product
+application:
+
+```text
+/product/priv-app/MIUIXiaomiAccount/MIUIXiaomiAccount.apk
+```
+
+The framework compatibility change is installed at:
+
+```text
+/system_ext/framework/miui-framework.jar
+```
+
+The legacy `/product/app/MIUIXiaomiAccount/` location is removed.
+
+### Verified Account Flow
+
+The verified Xiaomi Account path is:
+
+```text
+Settings
+    ↓
+Xiaomi Account
+    ↓
+Real Xiaomi Passport authentication
+    ↓
+AccountManager account creation
+    ↓
+Xiaomi Account dashboard
+    ↓
+Settings account integration
+```
+
+Verified functions include:
+
+- Real Xiaomi authentication
+- AccountManager account creation
+- Xiaomi Account dashboard
+- Account header display in Settings
+- Account profile / personal information
+- Stable Account Settings activity
+- Reboot persistence
+- Find Device unavailable fallback
+
+### Scope
+
+The primary purpose of T1.14.1 is to make Xiaomi Account usable as a
+system-integrated identity on the GSI so HyperOS components that depend on a
+signed-in Xiaomi Account can operate normally.
+
+This does **not** attempt to recreate every proprietary Xiaomi Cloud,
+Find Device, or vendor service that is absent from the A03.
+
+### Build Integrity
+
+The T1.14.1 image was rebuilt from the T1.14 baseline and verified with:
+
+- ext4 `e2fsck -fy`
+- file-level diff against T1.14
+- byte-for-byte telephony preservation checks
+- Xiaomi Account APK hash verification
+- `miui-framework.jar` hash verification
+
+Expected integration files are limited to the Xiaomi Account package,
+the AccountManager framework hook, and the corresponding obsolete package /
+runtime artifacts.
+
+### Status
+
+**T1.14.1 — Xiaomi Account Full Integration**
 
 # Telephony Milestone Summary
 
