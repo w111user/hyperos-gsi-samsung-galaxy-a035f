@@ -78,6 +78,7 @@ MediaTek-specific services that do not exist on the A03.
 
 The project therefore uses a **first-failure / minimal-patch methodology**:
 
+# ~~Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.~~ Fixed it on ver T1.11! 
 
 
 ```
@@ -95,9 +96,8 @@ runtime test
   ↓
 preserve baseline
 ````
-# ~~Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.~~ Fixed it on ver T1.11! 
----
 
+---
 
 # Milestone History
 
@@ -201,7 +201,7 @@ Additional compatibility work included:
 
 The objective was to preserve the normal Xiaomi authentication flow instead
 of faking successful authentication.
-# ~~Hold up, after this ver, all later ver make the mi login cannot be launch because the signature after patch have problems, will fix it later.~~ Fixed on T1.14.1!
+# Hold up, after this ver, all later ver make the mi login cannot be launch because the signature after patch have problems, will fix it later.
 ---
 
 # T1.8 — ThemeManager Stability
@@ -664,6 +664,28 @@ signature verification logic.
 
 This allows HyperOS Settings to read Xiaomi Account user data through
 `AccountManager` without globally disabling Android signature checks.
+
+### ThemeManager Compatibility
+
+T1.14.1 also fixes ThemeManager theme switching on the A03.
+
+The original ThemeManager apply path called
+`miui.content.res.ThemeNativeUtils.updateFilePermissionWithThemeContext()`,
+but the required hidden API was blocked by the framework hidden-API blacklist,
+causing `NoSuchMethodError` and aborting the apply operation.
+
+The compatibility patch updates the required `ThemeNativeUtils` methods in
+`/system_ext/framework/miui-framework.jar` from `blacklist` to `whitelist`.
+
+This restores the normal apply/switch flow, including:
+
+- Theme A → Theme B
+- Theme B → Classic / Default
+- Classic / Default → Theme A
+- Repeated theme switching after reboot
+
+The fix does not disable Xiaomi theme DRM validation or globally bypass hidden
+API enforcement.
 
 ### Package Integration
 
