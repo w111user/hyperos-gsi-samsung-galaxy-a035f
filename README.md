@@ -78,7 +78,6 @@ MediaTek-specific services that do not exist on the A03.
 
 The project therefore uses a **first-failure / minimal-patch methodology**:
 
-# ~~Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.~~ Fixed it on ver T1.11! 
 
 
 ```
@@ -96,8 +95,9 @@ runtime test
   ↓
 preserve baseline
 ````
-
+# ~~Edited: Accidently found an unwanted bug in every ThemeManager Patch: cannot click "Wallpaper & Personalization" in Settings, will fix it later.~~ Fixed it on ver T1.11! 
 ---
+
 
 # Milestone History
 
