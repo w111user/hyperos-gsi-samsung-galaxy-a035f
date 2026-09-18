@@ -967,6 +967,19 @@ debugging this port.
 
 ---
 
+## Licensing
+
+This project contains modified third-party Android components.
+
+Original scripts, patches and documentation created specifically for
+this project may be used under the MIT License where stated.
+
+Samsung firmware, MysticGSI-derived system files, AOSP components,
+Linux kernel components, Xiaomi/HyperOS/MIUI components and other
+third-party materials remain subject to their original licenses and
+copyrights.
+
+---
 # Disclaimer
 
 This is an independent community project.
